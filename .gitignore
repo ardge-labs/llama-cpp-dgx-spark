@@ -1,0 +1,26 @@
+# Build artifacts
+*.log
+build/
+dist/
+
+# Docker
+.dockerignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Models (don't commit large model files)
+*.gguf
+*.bin
+models/
+
+# Test files
+test/
