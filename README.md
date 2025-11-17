@@ -12,30 +12,93 @@ Pre-built Docker images of [llama.cpp](https://github.com/ggml-org/llama.cpp) op
 
 ## Quick Start
 
-### Server (Recommended)
+### Step 1: Download a GGUF Model
 
-Run the llama.cpp server with GPU acceleration:
+First, download a GGUF format model. Here's an example with Qwen2.5-0.5B:
 
 ```bash
-docker pull ghcr.io/YOUR_USERNAME/llama-cpp-dgx-spark:server
+# Create models directory
+mkdir -p models
+cd models
 
-docker run --gpus all -p 8080:8080 \
-  -v /path/to/models:/models \
-  ghcr.io/YOUR_USERNAME/llama-cpp-dgx-spark:server \
-  -m /models/your-model.gguf
+# Download a GGUF model from HuggingFace
+# Option 1: Using huggingface-cli (if installed)
+huggingface-cli download Qwen/Qwen2.5-0.5B-Instruct-GGUF \
+  qwen2.5-0.5b-instruct-q8_0.gguf --local-dir .
+
+# Option 2: Using wget with direct URL
+wget https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q8_0.gguf
+
+cd ..
 ```
 
-### Full (All Tools)
+**Popular GGUF Models:**
+- [Qwen2.5-0.5B-Instruct-GGUF](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF) - Small, fast
+- [Llama-3.2-1B-Instruct-GGUF](https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF) - Meta's 1B model
+- [Llama-3.1-8B-Instruct-GGUF](https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF) - Powerful 8B model
+
+### Step 2: Run the Server
+
+```bash
+# Pull the image
+docker pull ghcr.io/ardge-labs/llama-cpp-dgx-spark:server
+
+# Run with your model
+docker run --gpus all -p 8080:8080 \
+  -v ${PWD}/models:/models \
+  ghcr.io/ardge-labs/llama-cpp-dgx-spark:server \
+  -m /models/qwen2.5-0.5b-instruct-q8_0.gguf
+```
+
+**Expected Output:**
+```
+ggml_cuda_init: found 1 CUDA devices:
+  Device 0: NVIDIA GB10, compute capability 12.1, VMM: yes
+main: HTTP server is listening, hostname: 0.0.0.0, port: 8080
+```
+
+### Step 3: Test the API
+
+Once the server is running, test it:
+
+```bash
+# Health check
+curl http://localhost:8080/health
+
+# Generate completion
+curl http://localhost:8080/completion \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Building a website can be done in 10 simple steps:",
+    "n_predict": 128
+  }'
+
+# Chat completion (OpenAI-compatible)
+curl http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "What is the capital of France?"}
+    ],
+    "temperature": 0.7
+  }'
+```
+
+## Other Image Variants
+
+### Full (All Tools + Python)
 
 Includes all llama.cpp tools and Python dependencies:
 
 ```bash
-docker pull ghcr.io/YOUR_USERNAME/llama-cpp-dgx-spark:full
+docker pull ghcr.io/ardge-labs/llama-cpp-dgx-spark:full
 
+# Run CLI tool
 docker run --gpus all -it \
-  -v /path/to/models:/models \
-  ghcr.io/YOUR_USERNAME/llama-cpp-dgx-spark:full \
-  llama-cli -m /models/your-model.gguf -p "Hello, world!"
+  -v ${PWD}/models:/models \
+  ghcr.io/ardge-labs/llama-cpp-dgx-spark:full \
+  llama-cli -m /models/qwen2.5-0.5b-instruct-q8_0.gguf -p "Hello, world!"
 ```
 
 ### Light (CLI Only)
@@ -43,12 +106,12 @@ docker run --gpus all -it \
 Minimal image with just the llama-cli binary:
 
 ```bash
-docker pull ghcr.io/YOUR_USERNAME/llama-cpp-dgx-spark:light
+docker pull ghcr.io/ardge-labs/llama-cpp-dgx-spark:light
 
 docker run --gpus all \
-  -v /path/to/models:/models \
-  ghcr.io/YOUR_USERNAME/llama-cpp-dgx-spark:light \
-  -m /models/your-model.gguf -p "Hello!"
+  -v ${PWD}/models:/models \
+  ghcr.io/ardge-labs/llama-cpp-dgx-spark:light \
+  -m /models/qwen2.5-0.5b-instruct-q8_0.gguf -p "Hello!"
 ```
 
 ## Available Images
@@ -148,16 +211,18 @@ Mount your model directory:
 
 ### Running with Docker Compose
 
+Create a `docker-compose.yml` file:
+
 ```yaml
 version: '3.8'
 services:
   llama-server:
-    image: ghcr.io/YOUR_USERNAME/llama-cpp-dgx-spark:server
+    image: ghcr.io/ardge-labs/llama-cpp-dgx-spark:server
     ports:
       - "8080:8080"
     volumes:
       - ./models:/models
-    command: ["-m", "/models/llama-2-7b.Q4_K_M.gguf", "-c", "4096"]
+    command: ["-m", "/models/qwen2.5-0.5b-instruct-q8_0.gguf", "-c", "4096", "--port", "8080"]
     deploy:
       resources:
         reservations:
@@ -165,29 +230,103 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+    restart: unless-stopped
 ```
 
-### API Usage
+Then run:
+```bash
+docker compose up -d
+```
 
-Once the server is running:
+View logs:
+```bash
+docker compose logs -f
+```
+
+### Advanced Server Options
 
 ```bash
-# Generate completion
+# Run with custom context size and GPU layers
+docker run --gpus all -p 8080:8080 \
+  -v ${PWD}/models:/models \
+  ghcr.io/ardge-labs/llama-cpp-dgx-spark:server \
+  -m /models/qwen2.5-0.5b-instruct-q8_0.gguf \
+  -c 8192 \
+  --n-gpu-layers 35 \
+  --threads 20 \
+  --port 8080
+
+# Run with multiple models (server will load the first one)
+docker run --gpus all -p 8080:8080 \
+  -v ${PWD}/models:/models \
+  ghcr.io/ardge-labs/llama-cpp-dgx-spark:server \
+  -m /models/qwen2.5-0.5b-instruct-q8_0.gguf \
+  --alias qwen \
+  --verbose
+```
+
+### API Usage Examples
+
+Once the server is running, you can use the OpenAI-compatible API:
+
+```bash
+# Simple completion
 curl http://localhost:8080/completion \
   -H "Content-Type: application/json" \
   -d '{
-    "prompt": "Building a website can be done in 10 simple steps:",
-    "n_predict": 128
+    "prompt": "The meaning of life is",
+    "n_predict": 50,
+    "temperature": 0.7
   }'
 
-# Chat completion
+# Chat completion (OpenAI-compatible endpoint)
 curl http://localhost:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
+    "model": "qwen",
     "messages": [
-      {"role": "user", "content": "Hello!"}
-    ]
+      {"role": "system", "content": "You are a helpful coding assistant."},
+      {"role": "user", "content": "Write a Python function to calculate fibonacci numbers."}
+    ],
+    "temperature": 0.7,
+    "max_tokens": 500
   }'
+
+# Streaming chat completion
+curl http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "qwen",
+    "messages": [
+      {"role": "user", "content": "Explain quantum computing in simple terms."}
+    ],
+    "stream": true
+  }'
+```
+
+### Using with Python (OpenAI SDK)
+
+```python
+from openai import OpenAI
+
+# Point to your local llama.cpp server
+client = OpenAI(
+    base_url="http://localhost:8080/v1",
+    api_key="not-needed"  # llama.cpp doesn't require auth by default
+)
+
+# Chat completion
+response = client.chat.completions.create(
+    model="qwen",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "What is the capital of France?"}
+    ],
+    temperature=0.7,
+    max_tokens=100
+)
+
+print(response.choices[0].message.content)
 ```
 
 ## Technical Details
