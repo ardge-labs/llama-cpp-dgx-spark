@@ -35,57 +35,7 @@ git push -u origin main
 5. Check "Allow GitHub Actions to create and approve pull requests"
 6. Click "Save"
 
-## Step 4: Set up Self-Hosted ARM64 Runner on DGX Spark
-
-### Option A: Using GitHub's Runner (Recommended)
-
-1. In your GitHub repository, go to "Settings" > "Actions" > "Runners"
-2. Click "New self-hosted runner"
-3. Select:
-   - **OS**: Linux
-   - **Architecture**: ARM64
-4. Follow the installation commands (example below):
-
-```bash
-# Create a folder for the runner
-mkdir -p ~/actions-runner && cd ~/actions-runner
-
-# Download the latest runner package (ARM64)
-curl -o actions-runner-linux-arm64-2.311.0.tar.gz -L \
-  https://github.com/actions/runner/releases/download/v2.311.0/actions-runner-linux-arm64-2.311.0.tar.gz
-
-# Extract the installer
-tar xzf ./actions-runner-linux-arm64-2.311.0.tar.gz
-
-# Configure the runner
-./config.sh --url https://github.com/YOUR_USERNAME/llama-cpp-dgx-spark \
-  --token YOUR_REGISTRATION_TOKEN
-
-# IMPORTANT: Add these labels when prompted:
-# Labels: self-hosted,ARM64,Linux
-
-# Install as a service (optional but recommended)
-sudo ./svc.sh install
-sudo ./svc.sh start
-```
-
-### Option B: Docker-based Runner
-
-Alternatively, run the runner in Docker:
-
-```bash
-docker run -d --restart always \
-  --name github-runner \
-  -e REPO_URL="https://github.com/YOUR_USERNAME/llama-cpp-dgx-spark" \
-  -e RUNNER_TOKEN="YOUR_REGISTRATION_TOKEN" \
-  -e RUNNER_NAME="dgx-spark-runner" \
-  -e LABELS="self-hosted,ARM64,Linux" \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /home/timwu/runner-data:/runner \
-  myoung34/github-runner:latest
-```
-
-## Step 5: Enable GitHub Container Registry
+## Step 4: Enable GitHub Container Registry
 
 1. Go to your repository on GitHub
 2. Click "Packages" (or navigate to `https://github.com/YOUR_USERNAME?tab=packages`)
@@ -94,7 +44,9 @@ docker run -d --restart always \
 5. Scroll to "Danger Zone" > "Change visibility"
 6. Select "Public" to allow anyone to pull images
 
-## Step 6: Test the Workflow
+## Step 5: Test the Workflow
+
+**Note**: The workflow uses GitHub's hosted `ubuntu-24.04-arm64` runners, so you don't need to set up your own runner!
 
 ### Manual Trigger:
 
@@ -118,7 +70,7 @@ git commit -m "Test workflow trigger"
 git push
 ```
 
-## Step 7: Pull and Use the Image
+## Step 6: Pull and Use the Image
 
 Once the build completes:
 
@@ -133,20 +85,14 @@ docker run --gpus all -p 8080:8080 \
 
 ## Troubleshooting
 
-### Runner not starting builds
-
-1. Check runner status in Settings > Actions > Runners
-2. Ensure labels include: `self-hosted`, `ARM64`, `Linux`
-3. Restart runner: `sudo ./svc.sh restart`
-
 ### Build failing
 
 1. Check Actions tab for error logs
-2. Ensure runner has:
-   - Docker installed and running
-   - NVIDIA Container Toolkit installed
-   - Sufficient disk space (>20GB free)
-   - Network access to ghcr.io
+2. GitHub's ARM64 runners should handle the build automatically
+3. Common issues:
+   - Workflow permissions not set correctly
+   - Network issues accessing GitHub or Docker Hub
+   - Out of GitHub Actions minutes (check billing)
 
 ### Cannot pull published images
 
@@ -175,7 +121,7 @@ This will trigger a build and tag the image with `v1.0.0`.
 ## Security Notes
 
 1. **GitHub Token**: The workflow uses `GITHUB_TOKEN` which is automatically provided by GitHub Actions
-2. **Runner Security**: Self-hosted runners have access to your DGX Spark - only use in trusted repositories
+2. **GitHub-Hosted Runners**: Uses GitHub's secure hosted ARM64 runners - no need to expose your DGX Spark
 3. **Public Images**: Images will be publicly accessible if package visibility is public
 
 ## Maintenance
@@ -188,15 +134,9 @@ GitHub Packages has retention policies. To manually delete old images:
 2. Scroll to package versions
 3. Delete unwanted versions
 
-### Updating the runner
+### Monitoring builds
 
-```bash
-cd ~/actions-runner
-sudo ./svc.sh stop
-./config.sh remove --token YOUR_REMOVAL_TOKEN
-# Download new version
-# Re-configure and start
-```
+Check build status and logs in the "Actions" tab of your repository.
 
 ## Additional Resources
 
