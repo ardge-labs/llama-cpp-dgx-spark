@@ -14,28 +14,25 @@ Pre-built Docker images of [llama.cpp](https://github.com/ggml-org/llama.cpp) op
 
 ### Step 1: Download a GGUF Model
 
-First, download a GGUF format model. Here's an example with Qwen2.5-0.5B:
+First, download a GGUF format model. Here's an example with Qwen3-0.6B:
 
 ```bash
 # Create models directory
 mkdir -p models
 cd models
 
-# Download a GGUF model from HuggingFace
-# Option 1: Using huggingface-cli (if installed)
-huggingface-cli download Qwen/Qwen2.5-0.5B-Instruct-GGUF \
-  qwen2.5-0.5b-instruct-q8_0.gguf --local-dir .
-
-# Option 2: Using wget with direct URL
-wget https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q8_0.gguf
+# Download Qwen3-0.6B GGUF model
+wget https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf
 
 cd ..
 ```
 
 **Popular GGUF Models:**
-- [Qwen2.5-0.5B-Instruct-GGUF](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF) - Small, fast
+- [Qwen3-0.6B-GGUF](https://huggingface.co/Qwen/Qwen3-0.6B-GGUF) - Small, fast (600MB)
+- [Qwen2.5-0.5B-Instruct-GGUF](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF) - Tiny instruct model
 - [Llama-3.2-1B-Instruct-GGUF](https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF) - Meta's 1B model
 - [Llama-3.1-8B-Instruct-GGUF](https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF) - Powerful 8B model
+- [Gemma-3-12B-IT-QAT-Q4_0-GGUF](https://huggingface.co/google/gemma-3-12b-it-qat-q4_0-gguf) - Google's 12B quantized model
 
 ### Step 2: Run the Server
 
@@ -47,7 +44,7 @@ docker pull ghcr.io/ardge-labs/llama-cpp-dgx-spark:server
 docker run --gpus all -p 8080:8080 \
   -v ${PWD}/models:/models \
   ghcr.io/ardge-labs/llama-cpp-dgx-spark:server \
-  -m /models/qwen2.5-0.5b-instruct-q8_0.gguf
+  -m /models/Qwen3-0.6B-Q8_0.gguf
 ```
 
 **Expected Output:**
@@ -98,7 +95,7 @@ docker pull ghcr.io/ardge-labs/llama-cpp-dgx-spark:full
 docker run --gpus all -it \
   -v ${PWD}/models:/models \
   ghcr.io/ardge-labs/llama-cpp-dgx-spark:full \
-  llama-cli -m /models/qwen2.5-0.5b-instruct-q8_0.gguf -p "Hello, world!"
+  llama-cli -m /models/Qwen3-0.6B-Q8_0.gguf -p "Hello, world!"
 ```
 
 ### Light (CLI Only)
@@ -111,7 +108,7 @@ docker pull ghcr.io/ardge-labs/llama-cpp-dgx-spark:light
 docker run --gpus all \
   -v ${PWD}/models:/models \
   ghcr.io/ardge-labs/llama-cpp-dgx-spark:light \
-  -m /models/qwen2.5-0.5b-instruct-q8_0.gguf -p "Hello!"
+  -m /models/Qwen3-0.6B-Q8_0.gguf -p "Hello!"
 ```
 
 ## Available Images
@@ -222,7 +219,7 @@ services:
       - "8080:8080"
     volumes:
       - ./models:/models
-    command: ["-m", "/models/qwen2.5-0.5b-instruct-q8_0.gguf", "-c", "4096", "--port", "8080"]
+    command: ["-m", "/models/Qwen3-0.6B-Q8_0.gguf", "-c", "4096", "--port", "8080"]
     deploy:
       resources:
         reservations:
@@ -250,18 +247,18 @@ docker compose logs -f
 docker run --gpus all -p 8080:8080 \
   -v ${PWD}/models:/models \
   ghcr.io/ardge-labs/llama-cpp-dgx-spark:server \
-  -m /models/qwen2.5-0.5b-instruct-q8_0.gguf \
+  -m /models/Qwen3-0.6B-Q8_0.gguf \
   -c 8192 \
   --n-gpu-layers 35 \
   --threads 20 \
   --port 8080
 
-# Run with multiple models (server will load the first one)
+# Run with verbose logging
 docker run --gpus all -p 8080:8080 \
   -v ${PWD}/models:/models \
   ghcr.io/ardge-labs/llama-cpp-dgx-spark:server \
-  -m /models/qwen2.5-0.5b-instruct-q8_0.gguf \
-  --alias qwen \
+  -m /models/Qwen3-0.6B-Q8_0.gguf \
+  --alias qwen3 \
   --verbose
 ```
 
