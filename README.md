@@ -240,7 +240,9 @@ View logs:
 docker compose logs -f
 ```
 
-### Advanced Server Options
+### Server Options
+
+The server image accepts all standard llama-server command-line options. You can pass any option directly to the container:
 
 ```bash
 # Run with custom context size and GPU layers
@@ -260,7 +262,29 @@ docker run --gpus all -p 8080:8080 \
   -m /models/Qwen3-0.6B-Q8_0.gguf \
   --alias qwen3 \
   --verbose
+
+# Enable metrics endpoint
+docker run --gpus all -p 8080:8080 \
+  -v ${PWD}/models:/models \
+  ghcr.io/ardge-labs/llama-cpp-dgx-spark:server \
+  -m /models/Qwen3-0.6B-Q8_0.gguf \
+  --metrics
+
+# Access metrics
+curl http://localhost:8080/metrics
 ```
+
+**Common Options:**
+- `-c, --ctx-size` - Context size (default: 2048)
+- `--n-gpu-layers` - Number of layers to offload to GPU
+- `--threads` - Number of threads to use
+- `--alias` - Model alias for API requests
+- `--metrics` - Enable Prometheus-compatible metrics endpoint
+- `--verbose` - Enable verbose logging
+- `--port` - HTTP server port (default: 8080)
+- `--host` - HTTP server hostname (default: 127.0.0.1)
+
+For a complete list of options, see the [llama-server documentation](https://github.com/ggml-org/llama.cpp/blob/master/examples/server/README.md).
 
 ### API Usage Examples
 
